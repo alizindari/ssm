@@ -1,0 +1,280 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in, top=0.9in, bottom=0.9in]{geometry}
+\input{macros}
+
+% Additional commands for this paper
+\newcommand\hh{\mathbf{h}}
+\newcommand\ee{\mathbf{e}}
+\renewcommand\tt{\mathbf{t}}
+\newcommand{\sigmoid}{\sigma}
+\newcommand{\spectral}{\rho}
+\newcommand{\sel}{\mathcal{S}}
+
+\hypersetup{
+    pdftitle={Selectivity Learning Dynamics and Phase Transitions in Gated State Space Models},
+}
+
+\title{Selectivity Learning Dynamics and Phase Transitions \\ in Gated State Space Models}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+State space models with input-dependent gating---\ie selective SSMs---have emerged as powerful sequence models, yet the training dynamics by which selectivity is learned remain poorly understood.
+We study this question in the simplest setting that provably requires selectivity: a gated SSM trained on the running parity task.
+We prove that linear (non-gated) SSMs cannot compute parity regardless of hidden dimension, while a gated SSM with a single hidden unit suffices.
+This establishes that selectivity is both necessary and sufficient.
+Experimentally, we observe that the emergence of selectivity during training follows a sharp phase transition: accuracy remains near chance for hundreds of epochs, then jumps to perfect within a narrow window---precisely when the gate learns to discriminate between input values.
+\end{abstract}
+
+%═══════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+%═══════════════════════════════════════════════════════════════
+
+Sequence modeling is a cornerstone of modern machine learning.
+Recurrent neural networks (RNNs) process sequences by maintaining a hidden state that is updated at each timestep, but classical architectures such as the Elman network and LSTM~\citep{hochreiter1997long} have largely been supplanted by Transformers~\citep{vaswani2017attention} due to the difficulty of training through long dependencies.
+Recently, structured state space models (SSMs) have emerged as an efficient alternative~\citep{gu2022efficiently}.
+In their simplest form, SSMs define a linear recurrence over a hidden state, enabling fast parallel training via convolutions.
+However, the key insight of recent work---most notably Mamba~\citep{gu2023mamba}---is that \emph{selectivity} is essential: the state transition must depend on the input so that the model can choose what to remember and what to forget.
+
+This input-dependent gating is not new. The gated recurrent unit (GRU)~\citep{cho2014learning} implements exactly this mechanism: an update gate $\zz_t$, computed as a function of both the current input and the previous state, controls whether the hidden state is updated or preserved.
+The GRU can thus be viewed as a discretized SSM with learned selectivity~\citep{gu2023mamba, orvieto2023resurrecting}.
+
+While the importance of selectivity for model \emph{expressiveness} is well appreciated, a fundamental question remains open:
+\begin{center}
+\emph{How does selectivity emerge during training?}
+\end{center}
+The existing SSM literature treats selectivity as a static property of the architecture. We study it as a \emph{dynamic} phenomenon: starting from random initialization, the gate must learn to discriminate between inputs. We ask: what does this learning process look like, and what obstacles does gradient-based optimization face?
+
+To isolate the role of selectivity, we study the simplest task that provably requires it: \textbf{running parity}.
+Given a binary sequence, the model must output the cumulative parity (XOR) at every position.
+This task demands memory---at each step, the model sees a single bit but must know the parity of all preceding bits---and, as we prove, it demands nonlinear gating.
+
+\paragraph{Contributions.}
+\begin{itemize}
+    \item We prove that no linear SSM, regardless of hidden dimension, can compute running parity (\Cref{thm:linear-impossible}). The proof follows from the observation that linear recurrences produce linear functions of the input, which cannot represent XOR.
+    \item We give a constructive proof that a gated SSM with a single hidden unit ($D=1$) suffices (\Cref{thm:gru-sufficient}), establishing that selectivity is both necessary and sufficient.
+    \item We formulate a precise experimental framework for studying the training dynamics of selectivity, defining gate selectivity as a measurable order parameter for the phase transition.
+\end{itemize}
+
+%═══════════════════════════════════════════════════════════════
+\section{Preliminaries}
+\label{sec:prelim}
+%═══════════════════════════════════════════════════════════════
+
+%───────────────────────────────────────────────────────────────
+\subsection{The Running Parity Task}
+\label{sec:parity}
+%───────────────────────────────────────────────────────────────
+
+\begin{definition}[Running Parity]
+\label{def:parity}
+Given a binary input sequence $\xx = (x_1, x_2, \ldots, x_T) \in \{0,1\}^T$, the running parity is the sequence $\yy = (y_1, y_2, \ldots, y_T)$ defined by
+\begin{equation}
+    y_t = \left(\sum_{i=1}^{t} x_i\right) \bmod 2, \quad t = 1, \ldots, T.
+\end{equation}
+\end{definition}
+
+Equivalently, $y_1 = x_1$ and $y_t = y_{t-1} \oplus x_t$ for $t \geq 2$, where $\oplus$ denotes XOR.
+Concretely:
+\begin{center}
+\begin{tabular}{lcccccc}
+\toprule
+Position $t$ & 1 & 2 & 3 & 4 & 5 & 6 \\
+\midrule
+Input $x_t$ & 1 & 0 & 1 & 1 & 0 & 1 \\
+Output $y_t$ & 1 & 1 & 0 & 1 & 1 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The critical property of running parity is that it requires \emph{memory}: at time $t$, the model receives only $x_t$ but must know the cumulative count of all past ones. Moreover, the underlying operation is XOR, which is not linearly separable. Both properties make parity a minimal testbed for selective memory.
+
+%───────────────────────────────────────────────────────────────
+\subsection{Linear State Space Model}
+\label{sec:linear-ssm}
+%───────────────────────────────────────────────────────────────
+
+\begin{definition}[Linear SSM]
+\label{def:linear-ssm}
+A linear state space model with hidden dimension $D$ is defined by the recurrence
+\begin{align}
+    \hh_t &= \AA\, \hh_{t-1} + \bb\, x_t, \label{eq:linear-state}\\
+    \hat{y}_t &= \sigmoid\!\rb{\cc^\transpose \hh_t + d}, \label{eq:linear-output}
+\end{align}
+where $\AA \in \R^{D \times D}$, $\bb \in \R^D$, $\cc \in \R^D$, $d \in \R$, and $\hh_0 = \zeroVec$.
+The sigmoid function $\sigmoid(a) = 1/(1+e^{-a})$ maps the output to a probability.
+\end{definition}
+
+The state transition~\eqref{eq:linear-state} is \emph{input-independent} in the sense that $\AA$ and $\bb$ are fixed parameters---the model mixes old memory with new input at the same rate regardless of the input value.
+This lack of selectivity has a fundamental consequence, which we formalize in \Cref{sec:theory}.
+
+
+%───────────────────────────────────────────────────────────────
+\subsection{Gated State Space Model}
+\label{sec:gated-ssm}
+%───────────────────────────────────────────────────────────────
+
+We introduce selectivity through an input-dependent gate, yielding a gated SSM equivalent to the GRU~\citep{cho2014learning}.
+
+\begin{definition}[Gated SSM]
+\label{def:gated-ssm}
+A gated state space model with hidden dimension $D$ is defined by
+\begin{align}
+    \zz_t &= \sigmoid\!\rb{\WW_z\, \hh_{t-1} + \uu_z\, x_t + \bb_z}, \label{eq:gate}\\
+    \tilde{\hh}_t &= \tanh\!\rb{\WW_h\, \hh_{t-1} + \uu_h\, x_t + \bb_h}, \label{eq:candidate}\\
+    \hh_t &= (\mathbf{1} - \zz_t) \odot \hh_{t-1} + \zz_t \odot \tilde{\hh}_t, \label{eq:gated-update}\\
+    \hat{y}_t &= \sigmoid\!\rb{\cc^\transpose \hh_t + d}, \label{eq:gated-output}
+\end{align}
+where $\WW_z, \WW_h \in \R^{D \times D}$ are recurrent weight matrices, $\uu_z, \uu_h \in \R^D$ are input weight vectors, $\bb_z, \bb_h \in \R^D$ are bias vectors, $\cc \in \R^D$ is the output readout vector, $d \in \R$ is the output bias, and $\hh_0 = \zeroVec$.
+The operator $\odot$ denotes element-wise multiplication.
+\end{definition}
+
+The total number of parameters is $2D^2 + 5D + 1$.
+
+The gate vector $\zz_t \in (0,1)^D$ is the selectivity mechanism:
+\begin{itemize}
+    \item When $z_{t,i} \approx 0$: the $i$-th dimension of the state is \emph{preserved} ($h_{t,i} \approx h_{t-1,i}$).
+    \item When $z_{t,i} \approx 1$: the $i$-th dimension is \emph{overwritten} with the candidate ($h_{t,i} \approx \tilde{h}_{t,i}$).
+\end{itemize}
+Critically, $\zz_t$ depends on the current input $x_t$ through $\uu_z$.
+For parity, the model must learn a gate that opens on 1s and closes on 0s.
+
+\begin{remark}[Connection to Mamba]
+The gated update~\eqref{eq:gated-update} can be written as
+$\hh_t = \AA_t\, \hh_{t-1} + \BB_t\, \tilde{\hh}_t$
+where $\AA_t = \operatorname{diag}(\mathbf{1} - \zz_t)$ and $\BB_t = \operatorname{diag}(\zz_t)$ are input-dependent diagonal matrices. This is precisely the selective state space model formulation of~\citet{gu2023mamba}, where the state transition matrices are functions of the input.
+\end{remark}
+
+%═══════════════════════════════════════════════════════════════
+\section{Problem Formulation}
+\label{sec:problem}
+%═══════════════════════════════════════════════════════════════
+
+\paragraph{Training objective.}
+We train the gated SSM to minimize the binary cross-entropy loss averaged over all timesteps:
+\begin{equation}
+    \label{eq:loss}
+    \loss = -\frac{1}{T} \sum_{t=1}^{T} \sb{y_t \log \hat{y}_t + (1 - y_t) \log(1 - \hat{y}_t)},
+\end{equation}
+where $y_t$ is the true running parity and $\hat{y}_t$ is the model prediction.
+
+\paragraph{Dataset.}
+For a sequence length $T$, we train on the \emph{complete} dataset of all $2^T$ binary sequences.
+There is no train/test split and no sampling noise---the model has access to the full input space.
+Any failure to learn is therefore a failure of \emph{optimization}, not of \emph{statistical generalization}.
+
+\paragraph{Optimization.}
+We use Adam~\citep{kingma2015adam} with learning rate $\eta = 10^{-3}$, batch size $64$, and \emph{no weight decay}.
+Parameters are initialized with Xavier normal initialization for the recurrent matrices $\WW_z, \WW_h$ and normal initialization with standard deviation $0.5$ for the input and output vectors $\uu_z, \uu_h, \cc$.
+Biases are initialized to zero.
+
+\paragraph{Gate selectivity.}
+To quantify how well the gate discriminates between inputs, we define the \emph{gate selectivity}:
+\begin{equation}
+    \label{eq:selectivity}
+    \sel = \E\sb{\zz_t \mid x_t = 1} - \E\sb{\zz_t \mid x_t = 0},
+\end{equation}
+where the expectation is over all positions and sequences, averaged across hidden dimensions.
+When $\sel \approx 0$, the gate treats all inputs identically (no selectivity).
+When $\sel > 0$, the gate opens more for 1s than for 0s, as required for parity.
+We show empirically that $\sel$ serves as an \emph{order parameter} for the phase transition: it remains near zero during the accuracy plateau and jumps sharply at the transition.
+
+%═══════════════════════════════════════════════════════════════
+\section{Theoretical Results}
+\label{sec:theory}
+%═══════════════════════════════════════════════════════════════
+
+We establish two results that together show selectivity is both necessary and sufficient for computing parity.
+
+%───────────────────────────────────────────────────────────────
+\subsection{Linear SSMs Cannot Compute Parity}
+%───────────────────────────────────────────────────────────────
+
+\begin{theorem}
+\label{thm:linear-impossible}
+For any hidden dimension $D \geq 1$, no linear SSM (\Cref{def:linear-ssm}) can compute the running parity of binary sequences of length $T \geq 2$.
+\end{theorem}
+
+\begin{proof}
+Unrolling the recurrence~\eqref{eq:linear-state} from $\hh_0 = \zeroVec$ gives
+\begin{equation}
+    \hh_t = \sum_{k=0}^{t-1} \AA^k \bb\, x_{t-k}.
+\end{equation}
+Substituting into~\eqref{eq:linear-output}:
+\begin{equation}
+    \hat{y}_t = \sigmoid\!\rb{\sum_{k=0}^{t-1} w_k\, x_{t-k} + d}, \quad \text{where } w_k = \cc^\transpose \AA^k \bb \in \R.
+\end{equation}
+Thus $\hat{y}_t$ is the sigmoid of a \emph{linear} function of the inputs $(x_1, \ldots, x_t)$.
+
+At $t = 2$, we require $\hat{y}_2 = \sigmoid(w_0 x_2 + w_1 x_1 + d)$ to agree with $y_2 = x_1 \oplus x_2$ on all four binary inputs.
+This requires:
+\begin{align}
+    \sigmoid(d) < \tfrac{1}{2} \implies d &< 0, \label{eq:xor1}\\
+    \sigmoid(w_0 + d) > \tfrac{1}{2} \implies w_0 &> -d, \label{eq:xor2}\\
+    \sigmoid(w_1 + d) > \tfrac{1}{2} \implies w_1 &> -d, \label{eq:xor3}\\
+    \sigmoid(w_0 + w_1 + d) < \tfrac{1}{2} \implies w_0 + w_1 &< -d. \label{eq:xor4}
+\end{align}
+From \eqref{eq:xor2} and \eqref{eq:xor3}, $w_0 + w_1 > -2d > -d$, contradicting \eqref{eq:xor4}.
+\end{proof}
+
+\begin{remark}
+The result holds regardless of the hidden dimension $D$ because increasing $D$ enriches the linear function's coefficients $w_k = \cc^\transpose \AA^k \bb$ but does not introduce nonlinearity. Parity at position $t=2$ is XOR, which is not linearly separable---a fact first observed by~\citet{minsky1969perceptrons}.
+\end{remark}
+
+
+%───────────────────────────────────────────────────────────────
+\subsection{A Gated SSM with One Hidden Unit Suffices}
+%───────────────────────────────────────────────────────────────
+
+\begin{theorem}
+\label{thm:gru-sufficient}
+There exists a gated SSM (\Cref{def:gated-ssm}) with hidden dimension $D = 1$ that computes the running parity of binary sequences of arbitrary length.
+\end{theorem}
+
+\begin{proof}
+We construct explicit parameters. Set $D = 1$ and define:
+\begin{equation}
+    W_z = 0, \quad U_z = 20, \quad b_z = -10, \quad W_h = -\frac{1}{a}, \quad U_h = 1, \quad b_h = 0,
+\end{equation}
+where $a = \tanh(1) \approx 0.762$, and set $C = 10$, $d = -10a/2$.
+The model operates on two states: $h = 0$ (even parity) and $h = a$ (odd parity).
+
+\emph{Gate behavior.} When $x_t = 0$: $z_t = \sigmoid(-10) \approx 0$, so $h_t \approx h_{t-1}$ (state preserved). When $x_t = 1$: $z_t = \sigmoid(10) \approx 1$, so $h_t \approx \tilde{h}_t$ (state overwritten).
+
+\emph{State flipping.} When the gate opens ($x_t = 1$), the candidate is $\tilde{h}_t = \tanh(-h_{t-1}/a + 1)$:
+\begin{itemize}
+    \item If $h_{t-1} = 0$ (even): $\tilde{h}_t = \tanh(1) = a$. Transitions to odd.
+    \item If $h_{t-1} = a$ (odd): $\tilde{h}_t = \tanh(-1 + 1) = \tanh(0) = 0$. Transitions to even.
+\end{itemize}
+
+\emph{Output.} With $C = 10$ and $d = -5a$: $\hat{y}_t = \sigmoid(10 h_t - 5a)$. When $h_t = 0$: $\hat{y}_t = \sigmoid(-5a) \approx 0.02$. When $h_t = a$: $\hat{y}_t = \sigmoid(5a) \approx 0.98$. The predictions are correct for all $t$.
+
+Since the construction uses only the current input $x_t$ and the previous state $h_{t-1}$ (with no dependence on $t$ or $T$), it generalizes to sequences of arbitrary length.
+\end{proof}
+
+The contrast between \Cref{thm:linear-impossible} and \Cref{thm:gru-sufficient} is sharp: the \emph{only} difference between the two models is the gate $\zz_t$.
+In the linear SSM, the state transition $\AA$ is a fixed matrix; in the gated SSM, the effective transition $\operatorname{diag}(\mathbf{1} - \zz_t)$ is input-dependent.
+This single mechanism---selectivity---is what enables parity computation.
+
+\begin{corollary}
+\label{cor:selectivity}
+Input-dependent gating (selectivity) is both necessary and sufficient for a recurrent model to compute running parity.
+\end{corollary}
+
+
+\paragraph{The representation--optimization gap.}
+\Cref{thm:gru-sufficient} shows that $D=1$ is \emph{representationally} sufficient for parity. However, in our experiments, a $D=1$ gated SSM trained with gradient descent never exceeds $87\%$ accuracy: the solution exists but optimization cannot reach it. This gap between what a model can represent and what it can learn via gradient descent---the \emph{representation--optimization gap}---is a central phenomenon in our experimental study.
+
+\vfill
+
+{\small
+\bibliographystyle{plainnat}
+\bibliography{references}
+}
+
+\end{document}

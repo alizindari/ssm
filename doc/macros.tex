@@ -1,0 +1,190 @@
+% Recommended, but optional, packages for figures and better typesetting:
+\usepackage{microtype}
+
+\usepackage{natbib}
+\usepackage[utf8]{inputenc}				% allow utf-8 input
+\usepackage[T1]{fontenc}				% use 8-bit T1 fonts
+\usepackage{graphicx} % Required for inserting images
+\usepackage{hyperref}
+\usepackage{amsmath, amssymb, amsthm, mathtools, bm}
+\usepackage{thmtools}
+\usepackage{thm-restate}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{caption}
+\usepackage{url}
+\usepackage{booktabs} % for professional tables
+\usepackage{float}
+\usepackage[labelformat=simple]{subcaption}
+\usepackage{tikz}
+\usepackage{nicefrac}					% compact symbols for 1/2, etc.
+\usepackage{multirow}
+
+\hypersetup{
+	hidelinks,
+    colorlinks=true,
+    linkcolor=Blue,
+    filecolor=Blue,
+    citecolor=Blue,
+    urlcolor=Blue,
+    pdftitle={When LoRA Beats Full Fine-Tuning: A Theoretical Perspective},
+}
+\newcommand{\ali}[1]{{\color{Green}[{\bfseries A:} #1]}}
+\newcommand{\seb}[1]{{\color{Blue}[{\bfseries S:} #1]}}
+\newcommand{\rotem}[1]{{\color{red}[{\bfseries R:} #1]}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+
+% Attempt to make hyperref and algorithmic work together better:
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+\renewcommand\thesubfigure{(\alph{subfigure})}
+
+
+%mathematical operators
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert_2}
+\newcommand{\fnorm}[1]{\left\lVert#1\right\rVert_{\mathrm{F}}}
+\newcommand{\opnorm}[1]{\left\lVert#1\right\rVert_{\operatorname{op}}}
+\newcommand{\inner}[2]{\left\langle #1, #2 \right\rangle}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+
+%cursive letters
+\newcommand\aaa[0]{\mathcal{A}}
+\newcommand\bbb[0]{\mathcal{B}}
+\newcommand\ccc[0]{\mathcal{C}}
+\newcommand\ddd[0]{\mathcal{D}}
+\newcommand\eee[0]{\mathcal{E}}
+\newcommand\fff[0]{\mathcal{F}}
+\renewcommand\ggg[0]{\mathcal{G}}
+\newcommand\hhh[0]{\mathcal{H}}
+\newcommand\iii[0]{\mathcal{I}}
+\newcommand\jjj[0]{\mathcal{J}}
+\newcommand\kkk[0]{\mathcal{K}}
+\renewcommand\lll[0]{\mathcal{L}}
+\newcommand\mmm[0]{\mathcal{M}}
+\newcommand\nnn[0]{\mathcal{N}}
+\newcommand\ooo[0]{\mathcal{O}}
+\newcommand\ppp[0]{\mathcal{P}}
+\newcommand\qqq[0]{\mathcal{Q}}
+\newcommand\rrr[0]{\mathcal{R}}
+\newcommand\sss[0]{\mathcal{S}}
+\newcommand\ttt[0]{\mathcal{T}}
+\newcommand\uuu[0]{\mathcal{U}}
+\newcommand\vvv[0]{\mathcal{V}}
+\newcommand\www[0]{\mathcal{W}}
+\newcommand\xxx[0]{\mathcal{X}}
+\newcommand\yyy[0]{\mathcal{Y}}
+\newcommand\zzz[0]{\mathcal{Z}}
+
+
+%brackets
+\newcommand\rb[1]{\left(#1\right)}
+\renewcommand\sb[1]{\left[#1\right]}
+\newcommand\cb[1]{\left\{#1\right\}}
+\newcommand\supp[1]{supp\left(#1\right)}
+% \newcommand\Exp[0]{\mathbb{E}} Please use \E
+
+
+% Commands by Rotem
+\newcommand{\loss}{\mathcal{L}}
+\newcommand{\stochasticLoss}{\hat{\mathcal{L}}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\prob}{\mathbb{P}}
+\newcommand{\E}{ \mathbb{E} }
+\newcommand{\N}{ \mathbb{N} }
+\newcommand{\C}{ \mathbb{C} }
+\newcommand{\ie}{\emph{i.e.} }
+\newcommand{\eg}{\emph{e.g.} }
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\A}{\boldsymbol{A}}
+\newcommand{\CovMat}{\boldsymbol{\Sigma}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\trace}{\operatorname{Tr}}
+\newcommand{\Var}[0]{\operatorname{\mathbb{V}ar}}
+\newcommand{\kernel}{\operatorname{ker}}
+\newcommand{\image}{\operatorname{im}}
+
+\newcommand{\bDelta}[0]{\boldsymbol{\Delta}}
+\newcommand{\rvx}{{\bf x}}
+\newcommand{\rvy}{{\bf y}}
+\newcommand{\rvu}{{\bf u}}
+\newcommand{\rvv}{{\bf v}}
+\newcommand{\rvw}{{\bf w}}
+
+\newcommand{\transpose}{\mathrm{T}}
+\newcommand{\zeroVec}{\boldsymbol{0}}
+\newcommand{\IdentityMat}{\boldsymbol{I}}
+
+
+%ALi's commands
+
+%bold vector
+\renewcommand\aa[0]{\mathbf{a}}
+\newcommand\bb[0]{\mathbf{b}}
+\newcommand\cc[0]{\mathbf{c}}
+\newcommand\dd[0]{\mathbf{d}}
+\newcommand\uu[0]{\mathbf{u}}
+\newcommand\pp[0]{\mathbf{p}}
+\newcommand\qq[0]{\mathbf{q}}
+\newcommand\vv[0]{\mathbf{v}}
+\newcommand\xx[0]{\mathbf{x}}
+\newcommand\yy[0]{\mathbf{y}}
+\newcommand\zz[0]{\mathbf{z}}
+
+
+%bold matrices
+\renewcommand\AA[0]{\mathbf{A}}
+\newcommand\BB[0]{\mathbf{B}}
+\newcommand\CC[0]{\mathbf{C}}
+\newcommand\DD[0]{\mathbf{D}}
+\newcommand\XX[0]{\mathbf{X}}
+\newcommand\YY[0]{\mathbf{Y}}
+\newcommand\II[0]{\mathbf{I}}
+\newcommand\UU[0]{\mathbf{U}}
+\newcommand\VV[0]{\mathbf{V}}
+\newcommand\WW[0]{\mathbf{W}}
+\newcommand\ZZ[0]{\mathbf{Z}}
+\newcommand\MM[0]{\mathbf{M}}
+\newcommand\NN[0]{\mathbf{N}}
+\newcommand\QQ[0]{\mathbf{Q}}
+\newcommand\PP[0]{\mathbf{P}}
+\newcommand\GG[0]{\mathbf{G}}
+\newcommand\SSS[0]{\mathbf{S}}
+\newcommand\TT[0]{\mathbf{T}}
+\newcommand\lam[0]{\mathbf{\Lambda}}
+% \newcommand\ee[0]{\mathbb{E}} Please use \E
+
+
+%paper related new commands
+\newcommand{\vecnoise}{\boldsymbol{\varepsilon}} 
+\newcommand{\matnoise}{\bm{\xi}} 
+\newcommand{\risk}{\mathcal{R}}
+\newcommand{\empsol}{\widehat{\AA}}
+\newcommand{\fempsol}{\widehat{\BB}}
+\newcommand{\lorasol}{\widehat{\AA}_{\mathrm{LoRA}}}
+\newcommand{\gdsol}{\widehat{\AA}_{\mathrm{FFT}}}
+\newcommand{\initmodel}{\AA_0}
+\newcommand{\empcov}{\boldsymbol{\widehat{\Sigma}}}
+\newcommand{\trunk}[1]{\operatorname{trunc}_r \left\{ #1 \right\} }
+\newcommand{\vectorization}{\operatorname{vec}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand\ww[0]{\mathbf{w}}
+
+
+\newcommand{\circled}[1]{\tikz[baseline=(C.base)]{\node[draw,circle,inner sep=1.5pt](C){#1};}}

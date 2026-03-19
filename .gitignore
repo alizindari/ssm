@@ -1,0 +1,17 @@
+# Data
+*.pkl
+
+# LaTeX build artifacts
+doc/*.aux
+doc/*.bbl
+doc/*.blg
+doc/*.log
+doc/*.out
+doc/*.pdf
+doc/*.synctex.gz
+doc/*.fdb_latexmk
+doc/*.fls
+
+# Python
+__pycache__/
+*.pyc
