@@ -95,6 +95,60 @@ Output $y_t$ & 1 & 1 & 0 & 1 & 1 & 0 \\
 The critical property of running parity is that it requires \emph{memory}: at time $t$, the model receives only $x_t$ but must know the cumulative count of all past ones. Moreover, the underlying operation is XOR, which is not linearly separable. Both properties make parity a minimal testbed for selective memory.
 
 %───────────────────────────────────────────────────────────────
+\subsection{State Space Models}
+\label{sec:ssm-background}
+%───────────────────────────────────────────────────────────────
+
+Many tasks in machine learning involve sequential data: a model receives inputs one at a time---words in a sentence, samples of an audio signal, sensor readings over time---and must produce an output at each step.
+The fundamental challenge is \emph{memory}: the output at time $t$ may depend not just on the current input $x_t$, but on all previous inputs $x_1, \ldots, x_{t-1}$.
+A \emph{state space model} (SSM) addresses this by maintaining a hidden state $\hh_t$ that summarizes the relevant history, updating it at each step as new input arrives.
+
+\paragraph{The simplest example.}
+To build intuition, consider a model with a one-dimensional hidden state ($D=1$), a scalar $h_t \in \R$.
+The update rule is:
+\begin{equation}
+    \label{eq:simple-ssm}
+    h_t = a \cdot h_{t-1} + b \cdot x_t, \qquad \hat{y}_t = c \cdot h_t,
+\end{equation}
+where $a, b, c \in \R$ are learnable parameters and $h_0 = 0$.
+At each step, the model takes a fraction $a$ of its old memory and adds a fraction $b$ of the new input.
+For instance, if $a = 0.9$ and $b = 1$, the state is a weighted average of all past inputs with exponentially decaying weights: $h_t = \sum_{k=0}^{t-1} 0.9^k \cdot x_{t-k}$.
+The parameter $a$ controls how quickly the model forgets: $|a|$ close to $1$ yields long memory, while $|a|$ close to $0$ yields rapid forgetting.
+
+This simple model is already a valid state space model.
+Its limitation is that $a$ and $b$ are \emph{fixed constants}---the model applies the same dynamics to every input, regardless of whether the input is informative or noise.
+
+\paragraph{General formulation.}
+The idea generalizes to higher-dimensional states.
+A state space model originates in control theory~\citep{kalman1960new}, where a dynamical system is described by a state vector $\hh_t \in \R^D$ evolving according to a linear recurrence:
+\begin{equation}
+    \label{eq:discrete-ssm}
+    \hh_t = \AA\, \hh_{t-1} + \bb\, x_t, \qquad \hat{y}_t = \cc^\transpose \hh_t,
+\end{equation}
+where $\AA \in \R^{D \times D}$ is the state transition matrix, $\bb \in \R^D$ maps the scalar input into the state, and $\cc \in \R^D$ maps the state to the scalar output.
+The scalar example~\eqref{eq:simple-ssm} is the special case $D=1$.
+With $D > 1$, different dimensions of $\hh_t$ can track different features of the input history---one dimension might store a running sum, another a recent average, and so on.
+
+In the deep learning context, SSMs have been adopted as an efficient alternative to Transformers for sequence modeling~\citep{gu2022efficiently}.
+The recurrence~\eqref{eq:discrete-ssm} can equivalently be written as a convolution over the input sequence (since the parameters are fixed), enabling fast parallel training.
+This connection to convolutions is a key computational advantage.
+
+\paragraph{The selectivity problem.}
+The fundamental limitation of~\eqref{eq:discrete-ssm} is that $\AA$ and $\bb$ are \emph{constants}---they do not depend on the input $x_t$.
+The model applies the same update rule at every timestep, regardless of what it sees.
+Consider a concrete example: suppose a model reads the sequence ``the cat sat on the mat'' and must answer a question about it.
+An SSM with fixed parameters processes the word ``the'' and the word ``cat'' using the same state transition.
+It cannot decide: ``this word is important, I should remember it'' versus ``this word is filler, I should ignore it.''
+
+The central insight of recent work---most notably Mamba~\citep{gu2023mamba}---is that making the state transition \emph{input-dependent} dramatically improves performance.
+This property is called \emph{selectivity}: the model selectively decides what to remember and what to forget based on the current input.
+In a selective SSM, the parameters become functions of the input: $\AA_t = f_A(x_t)$, $\BB_t = f_B(x_t)$.
+
+The gated recurrent unit (GRU)~\citep{cho2014learning} implements selectivity through an explicit gate mechanism, and can be viewed as a discretized SSM with learned, input-dependent state transitions~\citep{gu2023mamba, orvieto2023resurrecting}.
+We formalize the non-selective (linear) and selective (gated) variants in the following subsections.
+
+
+%───────────────────────────────────────────────────────────────
 \subsection{Linear State Space Model}
 \label{sec:linear-ssm}
 %───────────────────────────────────────────────────────────────
